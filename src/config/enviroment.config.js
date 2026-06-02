@@ -12,7 +12,8 @@ const ENVIROMENT = {
     GMAIL_USERNAME: process.env.GMAIL_USERNAME,
     GMAIL_PASSWORD: process.env.GMAIL_PASSWORD,
     URL_BACKEND: process.env.URL_BACKEND,
-    JWT_SECRET: process.env.JWT_SECRET
+    JWT_SECRET: process.env.JWT_SECRET,
+    URL_FRONTEND: process.env.URL_FRONTEND
 }
 
 

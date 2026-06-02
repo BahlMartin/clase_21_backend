@@ -37,9 +37,9 @@ class AuthController {
 
             const newUser = await userRepository.create(name, email, hashed_password);
 
-            const verification_token =jwt.sign(
+            const verification_token = jwt.sign(
                 {
-                email: email
+                    email: email
                 },
                 ENVIROMENT.JWT_SECRET,
             )
@@ -120,6 +120,15 @@ class AuthController {
         }
     }
 
+    /**
+     * controlador de express para la verificacion del mail
+     * param{object} request - el objeto de la solicitud de express
+     * param{object} response - el objeto de la respuesta de express
+     * 
+     * esperamos recibir un query param llamado verification_token que contendra el token de verificacion del mail
+     */
+
+
     async verify_email(request, response) {
         const { verification_token } = request.query;
         try {
@@ -145,7 +154,7 @@ class AuthController {
                 status: 200
             });
         } catch (error) {
-            if(error instanceof jwt.JsonWebTokenError) {
+            if (error instanceof jwt.JsonWebTokenError) {
                 return response.status(401).json({
                     message: "Token de verificación inválido",
                     ok: false,
@@ -174,7 +183,7 @@ class AuthController {
     }
 
     async login(request, response) {
-        const {email, password } = request.body
+        const { email, password } = request.body
         try {
             if (!email) {
                 throw new ServerError("El mail es requerido", 400);
@@ -182,7 +191,7 @@ class AuthController {
             if (!password) {
                 throw new ServerError("El contraseña es requerida", 400);
             }
-            
+
 
             if (password.length < 6) {
                 throw new ServerError("la contraseña debe ser mayor a 6 caracteres", 400);
@@ -197,8 +206,8 @@ class AuthController {
             if (!user.email_verificado) {
                 throw new ServerError("El email no ha sido verificado", 401);
             }
-            const validation_password = await bcrypt.compare(password,user.password)
-            if (!validation_password){
+            const validation_password = await bcrypt.compare(password, user.password)
+            if (!validation_password) {
                 throw new ServerError(" credenciales incorrectas", 401);
             }
 
@@ -209,7 +218,7 @@ class AuthController {
                 created_at: user.fecha_creacion
             }
 
-            const access_token =jwt.sign(
+            const access_token = jwt.sign(
                 profile_info,
                 ENVIROMENT.JWT_SECRET,
             )
@@ -218,12 +227,102 @@ class AuthController {
                 message: "log in correcto",
                 ok: true,
                 status: 200,
-                data:{
+                data: {
                     access_token: access_token
                 }
             });
 
 
+        } catch (error) {
+            if (error instanceof ServerError) {
+                return response.status(error.status).json(
+                    {
+                        message: error.message,
+                        ok: false,
+                        status: error.status
+                    }
+                )
+            }
+            else {
+                console.error('Error critico:', error);
+                return response.status(500).json({
+                    message: "Error interno del servidor",
+                    ok: false,
+                    status: 500
+                });
+            }
+
+        }
+    }
+    async reset_password_request(request, response) {
+        try {
+            const { email } = request.body
+            if (!email) {
+                throw new ServerError("El mail es requerido", 400);
+            }
+            if (!/^\S+@\S+\.\S+$/.test(email)) {
+                throw new ServerError("Email inválido", 400)
+            }
+            const user_find = await userRepository.getByEmail(email)
+            if (!user_find) {
+                throw new ServerError("El usuario no existe", 404);
+            }
+
+            const token = jwt.sign(
+                {
+                    email: email
+                },
+                ENVIROMENT.JWT_SECRET,
+            )
+
+            const resetPasswordLink = `${ENVIROMENT.URL_FRONTEND}/reset-password?reset_password_token=${token}`;
+
+            await mailer_transport.sendMail({
+                from: '"UTN Backend" <puebautn@gmail.com>',
+                to: "puebautn@gmail.com",
+                subject: "Restablece tu contraseña en UTN Backend",
+                html: `
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Restablecer contraseña</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; margin: 0; padding: 0; }
+                    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+                    .header { background-color: #007bff; color: #ffffff; padding: 30px; text-align: center; }
+                    .content { padding: 40px; color: #333333; line-height: 1.6; }
+                    .button { display: inline-block; padding: 15px 30px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; }
+                    .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #777777; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Restablecer Contraseña</h1>
+                    </div>
+                    <div class="content">
+                        <p>Hola, ${user_find.nombre}. Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en UTN Backend.</p>
+                        <p>Para continuar con el proceso y elegir una nueva contraseña, por favor haz clic en el siguiente botón:</p>
+                        <div style="text-align: center;">
+                            <a href="${resetPasswordLink}" class="button">Restablecer contraseña</a>
+                        </div>
+                        <p style="margin-top: 25px; font-size: 14px; color: #555;">Si no has solicitado este cambio, puedes ignorar este correo de manera segura. Tu contraseña no cambiará.</p>
+                    </div>
+                    <div class="footer">
+                        <p>&copy; 2024 UTN Backend. Todos los derechos reservados.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            `
+            });
+            return response.status(200).json({
+                message: "Mail de restablecimiento enviado con éxito",
+                ok: true,
+                status: 200
+            });
         } catch (error) {
             if (error instanceof ServerError) {
                 return response.status(error.status).json(

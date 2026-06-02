@@ -177,3 +177,33 @@ Ruta: /api/workspace
 
 
 app.use('/api/workspace', workspace_router);
+
+
+/* 
+TAREA PARA 2/6
+    POST /api/auth/reset-password-request
+        body: {
+            email: 'email de usuario solicitante'
+        }
+        Que hace?
+            -Verifica que el usuario exista
+            -Genera un jwt con el id o email del usuario como payload (carga, contenido)
+            -Genera un mail y lo envia a la casilla indicada en el body con un ancla `${ENVIRONMENT.URL_FRONTEND}/reset-password?reset_password_token=${token}`
+    
+    POST /api/auth/reset-password
+        headers: {
+            "Authorization": "bearer {reset_password_token}"
+        },
+        body: {
+            new_password: "pepe_123"
+        }
+        Que hace?
+            -Capturamos de request.headers.authorization el token 
+            -Validamos el token (sino esta o es invalido 401 Unauthorized)
+            -Hasheamos la nueva contraseña que nos dan por body
+            -Con el id o email indicado en el token, buscamos en la DB y actualizamos la password con el nuevo hash (ya que estan le pueden validar el mail, debido a que el proceso requiere que el usuario use su casilla)
+  
+    Recomendacion personal:
+        NO hagan nada de front, prueben todo con postman
+        NO hagan los dos controladores, hagan 1, lo prueban y luego el siguiente
+*/
