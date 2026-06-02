@@ -344,6 +344,67 @@ class AuthController {
 
         }
     }
+
+    async reset_password(request, response) {
+        try {
+            const authorization_header = request.headers.authorization
+            if (!authorization_header) {
+                throw new ServerError("No se proporciono el header de autorizacion", 401)
+            }
+            const authorization_token = authorization_header.split(" ")[1]
+            if (!authorization_token) {
+                throw new ServerError("no hay token de autorizacion", 401)
+            }
+
+            const { password } = request.body
+            if (!password) {
+                throw new ServerError("no se envio la contraseña", 400)
+            }
+
+            const verification_token = jwt.verify(authorization_token, ENVIROMENT.JWT_SECRET)
+
+            const user_find = await userRepository.getByEmail(verification_token.email)
+
+            if (!user_find) {
+                throw new ServerError("No se encontro el usuario", 404)
+            }
+            const hashed_password = await bcrypt.hash(password, 12);
+
+            await userRepository.updateById(user_find.id, { password: hashed_password });
+
+            return response.status(200).json({
+                message: "Contraseña restablecida con éxito",
+                ok: true,
+                status: 200
+            });
+        } catch (error) {
+            if (error.name === 'JsonWebTokenError') {
+                return response.status(401).json({
+                    message: "Token de autorizacion invalido",
+                    ok: false,
+                    status: 401
+                })
+            }
+            if (error instanceof ServerError) {
+                return response.status(error.status).json(
+                    {
+                        message: error.message,
+                        ok: false,
+                        status: error.status
+                    }
+                )
+            }
+            else {
+                console.error('Error critico:', error);
+                return response.status(500).json({
+                    message: "Error interno del servidor",
+                    ok: false,
+                    status: 500
+                });
+            }
+
+        }
+    }
 }
 
 /* 

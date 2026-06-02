@@ -11,5 +11,5 @@ auth_router.post('/login', authController.login)
 
 auth_router.post('/reset-password-request', authController.reset_password_request)
 
-auth_router.post('/reset-password-request', authController.reset_password_request)
+auth_router.post('/reset-password', authController.reset_password)
 export default auth_router
