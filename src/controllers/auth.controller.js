@@ -364,7 +364,9 @@ class AuthController {
             if (!password) {
                 throw new ServerError("no se envio la contraseña", 400)
             }
-
+            if (password.length < 6) {
+                throw new ServerError("la contraseña debe ser mayor a 6 caracteres", 400);
+            }
             const verification_token = jwt.verify(authorization_token, ENVIROMENT.JWT_SECRET)
             // el verify tambien decodifica el token
             const user_find = await userRepository.getByEmail(verification_token.email)
@@ -372,6 +374,7 @@ class AuthController {
             if (!user_find) {
                 throw new ServerError("No se encontro el usuario", 404)
             }
+
             const hashed_password = await bcrypt.hash(password, 12);
 
             await userRepository.updateById(user_find.id, { password: hashed_password });
