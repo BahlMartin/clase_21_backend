@@ -273,6 +273,9 @@ class AuthController {
                     email: email
                 },
                 ENVIROMENT.JWT_SECRET,
+                {
+                    expiresIn: "15m" // el token expira en 15min
+                }
             )
 
             const resetPasswordLink = `${ENVIROMENT.URL_FRONTEND}/reset-password?reset_password_token=${token}`;
@@ -352,6 +355,7 @@ class AuthController {
                 throw new ServerError("No se proporciono el header de autorizacion", 401)
             }
             const authorization_token = authorization_header.split(" ")[1]
+
             if (!authorization_token) {
                 throw new ServerError("no hay token de autorizacion", 401)
             }
@@ -362,7 +366,7 @@ class AuthController {
             }
 
             const verification_token = jwt.verify(authorization_token, ENVIROMENT.JWT_SECRET)
-
+            // el verify tambien decodifica el token
             const user_find = await userRepository.getByEmail(verification_token.email)
 
             if (!user_find) {
