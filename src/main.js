@@ -53,7 +53,7 @@ app.use(cors())
 
 app.use('/api/auth', auth_router);
 
-const PORT = ENVIROMENT.PORT 
+const PORT = ENVIROMENT.PORT
 app.listen(PORT, () => {
     console.log("nuestra aplicacion express se esta ejecutando en el puerto " + PORT)
 })
@@ -89,7 +89,7 @@ crear el endpoint
 Un endpoitn donde el cliente deberea enviarnos por header de autorizacion el acces token, en caso de estar presente y ser correcto
 le daremos los datos de la cuenta
 */
-app.get('/api/profile', 
+app.get('/api/profile',
     /* (request, response, next) =>{
     const random_num = Math.random()
     if (random_num > 0.5) { 
@@ -102,15 +102,15 @@ app.get('/api/profile',
     }
     }, */
     authMiddleware, (request, response) => {
-    console.log("la informacion del usuario es: ", request.user.username)
-    console.log("se activa el controlador")
-    return response.json({
-        ok:true,
-        status:200,
-        message:"estas autenticado"
-    })
+        console.log("la informacion del usuario es: ", request.user.username)
+        console.log("se activa el controlador")
+        return response.json({
+            ok: true,
+            status: 200,
+            message: "estas autenticado"
+        })
 
-})
+    })
 
 /* 
 Ruta: /api/workspace
@@ -206,4 +206,32 @@ TAREA PARA 2/6
     Recomendacion personal:
         NO hagan nada de front, prueben todo con postman
         NO hagan los dos controladores, hagan 1, lo prueban y luego el siguiente
+*/
+
+/*  
+    TAREA 4/6:
+        Poder invitar gente a nuestro espacio de trabajo (si somos admin o owner)
+        Coinsideraciones:
+            - No puedo invitar gente que no existe
+            - Tengo que poder aceptar la invitacion ( mi membresia )
+                Que cambio deberiamos hacer en la DB?
+                    - Crear una coleccion de InvitationWorkspace
+                    - Modificar la coleccion de membresias para que soporte el estado de invitacion
+            - Que sucede si un usuario ya tiene una invitacion pendiente? y rechazada? y aceptada?
+                - Pendiente: Ya has invitado a este usuario (tener en cuenta que si se trabaja con fechas de expiracion debemos guardar tambien hasta que momento puede la invitacion estar pendiente, ya que si una invitacion pendiente expiro conviene eliminar la existente y recrear una nueva)
+                - Rechazada: Si fue rechazado ver si paso el tiempo limite de validez de rechazo (Depende de si queremos tener este tiempo limite). Si no paso este tiempo decir 'El usuario rechazo tu invitacion'
+                - Aceptada: El usuario ya es un miembro del espacio de trabajo
+            
+        authMiddleware, workspaceMiddleware(['owner', 'admin']) POST /api/workspace/:workspace_id/members
+            body {
+                invited_email: email del usuario invitado, 
+                role: Rol del usuario invitado
+            }
+        
+        - Validar que el usuario invitado exista
+        - Validamos que no tenga una membresia con este espacio de trabajo
+        - Creamos membresia con estado pendiente
+        - Creamos 1 tokens, con el {id_member} 
+        - Redactamos el mail con los botones de aceptar y rechazar que envien un GET hacia /api/workspace/:workspace_id/members/:decision?token
+
 */
