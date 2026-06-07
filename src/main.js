@@ -9,7 +9,7 @@ import auth_router from './routes/auth.routes.js'
 import mailer_transport from './config/mailer.config.js'
 import authMiddleware from './middlewares/auth.middleware.js';
 import workspace_router from './routes/workspace.route.js'
-if (ENVIROMENT.MODE === 'development') {
+if (ENVIROMENT.MODE === 'development' || ENVIROMENT.MODE === 'debug') {
     dns.setServers(['8.8.8.8', '8.8.4.4'])
 }
 
