@@ -17,4 +17,6 @@ workspace_router.delete('/:workspace_id', workspaceMiddleware([MEMBER_WORKSPACE_
 workspace_router.put('/:workspace_id', workspaceMiddleware([MEMBER_WORKSPACE_ROLES.OWNER, MEMBER_WORKSPACE_ROLES.ADMIN]), (req, res) => workspaceController.updateById(req, res))
 
 workspace_router.post('/:workspace_id/members', workspaceMiddleware([MEMBER_WORKSPACE_ROLES.OWNER, MEMBER_WORKSPACE_ROLES.ADMIN]), (req, res) => workspaceController.addMemberInvitation(req, res))
+
+workspace_router.get('/:workspace_id/members/:decision?token', workspaceMiddleware([MEMBER_WORKSPACE_ROLES.OWNER, MEMBER_WORKSPACE_ROLES.ADMIN, MEMBER_WORKSPACE_ROLES.MEMBER]), (req, res) => workspaceController.respondInvitationMember(req, res))
 export default workspace_router

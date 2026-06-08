@@ -3,6 +3,10 @@ import workspaceRepository from "../repositories/workspace.repository.js";
 import ENVIROMENT from "../config/enviroment.config.js";
 import workspacememberRepository from "../repositories/workspaceMember.repository.js";
 import MEMBER_WORKSPACE_ROLES from "../constants/memberRoles.constants.js";
+import invitationWorkspaceRepository from "../repositories/invitationWorkspace.repository.js";
+import INVITATION_WORKSPACE_STATES from "../constants/invitationWorkspaceStates.constants.js";
+
+
 class WorkspaceController {
 
     async createdWorkspace(request, response) {
@@ -203,8 +207,11 @@ class WorkspaceController {
                 console.log("espacio de trabajo", workspace_id)
             }
 
-            const created_membership = await workspacememberRepository.create(invited_user.id, workspace_id, role = 'pending')
+            const inviter_user_id = request.user.id;
+            const expiracion = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const created_invitation = await invitationWorkspaceRepository.create(inviter_user_id, invited_user.id, workspace_id, expiracion);
 
+            const created_membership = await workspacememberRepository.create(invited_user.id, workspace_id, role)
             if (ENVIROMENT.MODE == "debug") {
                 console.log("membership", created_membership)
             }
@@ -215,12 +222,12 @@ class WorkspaceController {
                 },
                 ENVIROMENT.JWT_SECRET,
                 {
-                    expiresIn: "15m" // el token expira en 15min
+                    expiresIn: "24h"
                 }
-            )
+            );
 
-            const invitationLinkAccept = `${ENVIROMENT.URL_BACKEND}/api/workspace/:${workspace_id}/members/:decision?token=${token}`;
-            const invitationLinkReject = `${ENVIROMENT.URL_BACKEND}/api/workspace/:${workspace_id}/members/:decision?token=${token}`;
+            const invitationLinkAccept = `${ENVIROMENT.URL_BACKEND}/api/workspace/${workspace_id}/members/${INVITATION_WORKSPACE_STATES.ACCEPTED}?token=${token}`;
+            const invitationLinkReject = `${ENVIROMENT.URL_BACKEND}/api/workspace/${workspace_id}/members/${INVITATION_WORKSPACE_STATES.REJECTED}?token=${token}`;
             await mailer_transport.sendMail({
                 from: '"UTN Backend" <puebautn@gmail.com>',
                 to: "puebautn@gmail.com",
@@ -344,7 +351,7 @@ class WorkspaceController {
                         </div>
                         <div class="footer">
                             <p>&copy; 2026 UTN Backend. Todos los derechos reservados.</p>
-                            <p style="margin-top: 8px;">Este enlace de invitación expirará en 15 min.</p>
+                            <p style="margin-top: 8px;">Este enlace de invitación expirará en 24 horas.</p>
                         </div>
                     </div>
                 </body>
@@ -358,6 +365,79 @@ class WorkspaceController {
                 status: 200
             });
         } catch (error) {
+            if (error instanceof ServerError) {
+                return response.status(error.status).json(
+                    {
+                        message: error.message,
+                        ok: false,
+                        status: error.status
+                    }
+                )
+            }
+            else {
+                console.error('Error critico:', error);
+                return response.status(500).json({
+                    message: "Error interno del servidor",
+                    ok: false,
+                    status: 500
+                });
+            }
+
+        }
+    }
+
+    async respondInvitationMember(request, response) {
+        try {
+            const desicion = request.params.decision
+            if (!desicion) {
+                throw new ServerError("No se especifico una desicion", 400)
+            }
+            if (desicion != INVITATION_WORKSPACE_STATES.ACCEPTED && desicion != INVITATION_WORKSPACE_STATES.REJECTED) {
+                throw new ServerError("Desicion invalida", 400)
+            }
+            const workspace_id = request.params.workspace_id
+            if (!workspace_id) {
+                throw new ServerError("No se especifico un espacio de trabajo", 400)
+            }
+            const token = request.query.token
+            const id_member = request.user.id
+
+            if (!token) {
+                throw new ServerError("No se especifico un token", 400)
+            }
+            if (!id_member) {
+                throw new ServerError("No se especifico un miembro", 400)
+            }
+
+            const verification_token = jwt.verify(token, ENVIROMENT.JWT_SECRET)
+            if (!verification_token) {
+                throw new ServerError("Token invalido", 401)
+            }
+
+            const update_invitation = await invitationWorkspaceRepository.updateInvitationState(verification_token.id, desicion)
+            if (!update_invitation) {
+                throw new ServerError("No se pudo actualizar la invitación", 500)
+            }
+
+            const update_workspace_member = await workspacememberRepository.updateById(id_member, { estado: desicion })
+            if (!update_workspace_member) {
+                throw new ServerError("No se pudo actualizar el rol del espacio de trabajo", 500)
+            }
+
+
+            return response.status(200).json({
+                message: "Invitación enviada con éxito",
+                ok: true,
+                status: 200
+            });
+        } catch (error) {
+            if (error.name === 'JsonWebTokenError') {
+                return response.status(401).json({
+                    message: "Token de autorizacion invalido",
+                    ok: false,
+                    status: 401
+                })
+            }
             if (error instanceof ServerError) {
                 return response.status(error.status).json(
                     {
