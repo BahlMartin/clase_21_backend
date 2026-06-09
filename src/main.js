@@ -9,6 +9,8 @@ import auth_router from './routes/auth.routes.js'
 import mailer_transport from './config/mailer.config.js'
 import authMiddleware from './middlewares/auth.middleware.js';
 import workspace_router from './routes/workspace.route.js'
+import errorHandlerMiddleware from './middlewares/error.middleware.js'
+
 if (ENVIROMENT.MODE === 'development' || ENVIROMENT.MODE === 'debug') {
     dns.setServers(['8.8.8.8', '8.8.4.4'])
 }
@@ -235,3 +237,6 @@ TAREA PARA 2/6
         - Redactamos el mail con los botones de aceptar y rechazar que envien un GET hacia /api/workspace/:workspace_id/members/:decision?token
 
 */
+
+// esto es debido a que este middleware se ejecutara entre el controller y la response del servidor
+app.use(errorHandlerMiddleware)

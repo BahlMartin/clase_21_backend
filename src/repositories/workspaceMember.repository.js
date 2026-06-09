@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import WorkspaceMember from "../models/workspaceMembers.model.js"
-
+import MEMBER_INVITATION_STATUS from "../constants/invitationWorkspaceStates.constants.js";
 class WorkspaceMemberRepository {
 
     async getByUserAndWorkspaceId(user_id, workspace_id) {
@@ -33,7 +33,7 @@ class WorkspaceMemberRepository {
 
     async getByWorkspaceId(workspace_id) {
         //Lista de membresias por x espacio de trabajo
-        const result = await WorkspaceMember.find({ fk_workspace_id: workspace_id }).populate('fk_user_id', 'nombre email')
+        const result = await WorkspaceMember.find({ fk_workspace_id: workspace_id, estado: MEMBER_INVITATION_STATUS.ACCEPTED }).populate('fk_user_id', 'nombre email')
         // populate sirve para poder expandir cierta propiedad
         // cuando expandimos basicamente estamos trayendo los datos referenciados a esa propiedad,
         // solo podemos expandir las propiedades que en el modelo fueron marcadas como referencia

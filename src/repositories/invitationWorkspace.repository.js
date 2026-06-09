@@ -16,6 +16,10 @@ class InvitationWorkspaceRepository {
     async getAllInvitationByUser(user_id) {
         return await InvitationWorkspace.find({ fk_invited_user_id: user_id });
     }
+
+    async getInvitationById(invitation_id) {
+        return await InvitationWorkspace.findById(invitation_id);
+    }
 }
 
 export const invitationWorkspaceRepository = new InvitationWorkspaceRepository();

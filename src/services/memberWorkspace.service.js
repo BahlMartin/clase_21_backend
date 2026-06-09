@@ -96,7 +96,51 @@ class MemberWorkspaceService {
         return expiracion
     }
 
+    async memberDesicion(desicion, token) {
+        try {
+            const verification_token = jwt.verify(token, ENVIROMENT.JWT_SECRET)
 
+            if (!verification_token) {
+                throw new ServerError("Token invalido", 401)
+            }
+            const invitation = await invitationWorkspaceRepository.getInvitationById(verification_token.id_invitation)
+
+
+            if (!invitation) {
+                throw new ServerError("No se pudo obtener la invitación", 404)
+            }
+
+            if (invitation.estado !== MEMBER_INVITATION_STATUS.PENDING) {
+                throw new ServerError("No se pudo actualizar la invitación", 400)
+            }
+
+            if (invitation.expiracion < Date.now()) {
+                throw new ServerError("La invitación ha expirado", 400)
+            }
+
+            const update_invitation = await invitationWorkspaceRepository.updateInvitationState(invitation.id, desicion)
+
+            if (!update_invitation) {
+                throw new ServerError("No se pudo actualizar la invitación", 400)
+            }
+            const workspace_member_update = await workspacememberRepository.updateById(verification_token.member_id, { estado: desicion })
+
+            if (!workspace_member_update) {
+                throw new ServerError("No se pudo actualizar el rol del espacio de trabajo", 500)
+            }
+
+        } catch (error) {
+            if (error.name === 'JsonWebTokenError') {
+                throw new ServerError("Token de autorizacion invalido", 401)
+            }
+            if (error instanceof ServerError) {
+                throw new ServerError(error.message, error.status)
+            }
+
+
+        }
+
+    }
 }
 const memberWorkspaceService = new MemberWorkspaceService()
 export default memberWorkspaceService

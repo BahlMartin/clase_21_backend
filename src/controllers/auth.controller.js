@@ -8,49 +8,48 @@ import jwt from 'jsonwebtoken'
 class AuthController {
     async register(request, response) {
         const { name, email, password } = request.body
-        try {
-            if (!name) {
-                throw new ServerError("El nombre es obligatorio", 400);
-            }
-            if (!email) {
-                throw new ServerError("El email es obligatorio", 400);
-            }
-            if (!password) {
-                throw new ServerError("la password es obligatoria", 400);
-            }
-            if (name.trim().length <= 2) {
-                throw new ServerError("el nombre debe ser mayor a 2 letras", 400);
-            }
-            if (password.length < 6) {
-                throw new ServerError("la contraseña debe ser mayor a 6 caracteres", 400);
-            }
-            if (!/^\S+@\S+\.\S+$/.test(email)) {
-                throw new ServerError("Email inválido", 400)
-            }
-            const existingUser = await userRepository.getByEmail(email);
-            if (existingUser) {
-                throw new ServerError("El email ya está registrado", 400)
-            }
+        if (!name) {
+            throw new ServerError("El nombre es obligatorio", 400);
+        }
+        if (!email) {
+            throw new ServerError("El email es obligatorio", 400);
+        }
+        if (!password) {
+            throw new ServerError("la password es obligatoria", 400);
+        }
+        if (name.trim().length <= 2) {
+            throw new ServerError("el nombre debe ser mayor a 2 letras", 400);
+        }
+        if (password.length < 6) {
+            throw new ServerError("la contraseña debe ser mayor a 6 caracteres", 400);
+        }
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+            throw new ServerError("Email inválido", 400)
+        }
+        const existingUser = await userRepository.getByEmail(email);
+        if (existingUser) {
+            throw new ServerError("El email ya está registrado", 400)
+        }
 
-            const hashed_password = await bcrypt.hash(password, 12);
-            // el 10 es la cantidad de rondas de salting, entre mas alto mas seguro pero mas lento el proceso de hash
+        const hashed_password = await bcrypt.hash(password, 12);
+        // el 10 es la cantidad de rondas de salting, entre mas alto mas seguro pero mas lento el proceso de hash
 
-            const newUser = await userRepository.create(name, email, hashed_password);
+        const newUser = await userRepository.create(name, email, hashed_password);
 
-            const verification_token = jwt.sign(
-                {
-                    email: email
-                },
-                ENVIROMENT.JWT_SECRET,
-            )
+        const verification_token = jwt.sign(
+            {
+                email: email
+            },
+            ENVIROMENT.JWT_SECRET,
+        )
 
-            const verificationLink = `${ENVIROMENT.URL_BACKEND}/api/auth/verify-email?verification_token=${verification_token}`;
+        const verificationLink = `${ENVIROMENT.URL_BACKEND}/api/auth/verify-email?verification_token=${verification_token}`;
 
-            await mailer_transport.sendMail({
-                from: '"UTN Backend" <puebautn@gmail.com>',
-                to: email,
-                subject: "Verifica tu cuenta en UTN Backend",
-                html: `
+        await mailer_transport.sendMail({
+            from: '"UTN Backend" <puebautn@gmail.com>',
+            to: email,
+            subject: "Verifica tu cuenta en UTN Backend",
+            html: `
             <!DOCTYPE html>
             <html lang="es">
             <head>
@@ -84,40 +83,21 @@ class AuthController {
             </body>
             </html>
             `
-            });
+        });
 
-            return response.status(201).json({
-                message: "Usuario registrado con éxito",
-                ok: true,
-                status: 201,
-                data: {
-                    user: {
-                        id: newUser._id,
-                        name: newUser.nombre,
-                        email: newUser.email
-                    }
+        return response.status(201).json({
+            message: "Usuario registrado con éxito",
+            ok: true,
+            status: 201,
+            data: {
+                user: {
+                    id: newUser._id,
+                    name: newUser.nombre,
+                    email: newUser.email
                 }
-            });
-        } catch (error) {
-            if (error instanceof ServerError) {
-                return response.status(error.status).json(
-                    {
-                        message: error.message,
-                        ok: false,
-                        status: error.status
-                    }
-                )
             }
-            else {
-                console.error('Error critico:', error);
-                return response.status(500).json({
-                    message: "Error interno del servidor",
-                    ok: false,
-                    status: 500
-                });
-            }
+        });
 
-        }
     }
 
     /**
@@ -131,160 +111,115 @@ class AuthController {
 
     async verify_email(request, response) {
         const { verification_token } = request.query;
-        try {
-            if (!verification_token) {
-                throw new ServerError("El token de verificación es requerido", 400);
-            }
-            const payload = jwt.verify(verification_token, ENVIROMENT.JWT_SECRET);
-            const email = payload.email;
 
-
-            const user = await userRepository.getByEmail(email);
-            if (!user) {
-                throw new ServerError("El usuario no existe", 404);
-            }
-            if (user.email_verificado) {
-                throw new ServerError("El email ya está verificado", 400);
-            }
-            await userRepository.updateById(user._id, { email_verificado: true });
-
-            return response.status(200).json({
-                message: "email validado con éxito",
-                ok: true,
-                status: 200
-            });
-        } catch (error) {
-            if (error instanceof jwt.JsonWebTokenError) {
-                return response.status(401).json({
-                    message: "Token de verificación inválido",
-                    ok: false,
-                    status: 401
-                });
-            }
-            if (error instanceof ServerError) {
-                return response.status(error.status).json(
-                    {
-                        message: error.message,
-                        ok: false,
-                        status: error.status
-                    }
-                )
-            }
-            else {
-                console.error('Error critico:', error);
-                return response.status(500).json({
-                    message: "Error interno del servidor",
-                    ok: false,
-                    status: 500
-                });
-            }
-
+        if (!verification_token) {
+            throw new ServerError("El token de verificación es requerido", 400);
         }
+        const payload = jwt.verify(verification_token, ENVIROMENT.JWT_SECRET);
+        const email = payload.email;
+
+
+        const user = await userRepository.getByEmail(email);
+        if (!user) {
+            throw new ServerError("El usuario no existe", 404);
+        }
+        if (user.email_verificado) {
+            throw new ServerError("El email ya está verificado", 400);
+        }
+        await userRepository.updateById(user._id, { email_verificado: true });
+
+        return response.status(200).json({
+            message: "email validado con éxito",
+            ok: true,
+            status: 200
+        });
+
     }
 
     async login(request, response) {
         const { email, password } = request.body
-        try {
-            if (!email) {
-                throw new ServerError("El mail es requerido", 400);
-            }
-            if (!password) {
-                throw new ServerError("El contraseña es requerida", 400);
-            }
 
-
-            if (password.length < 6) {
-                throw new ServerError("la contraseña debe ser mayor a 6 caracteres", 400);
-            }
-            if (!/^\S+@\S+\.\S+$/.test(email)) {
-                throw new ServerError("Email inválido", 400)
-            }
-            const user = await userRepository.getByEmail(email);
-            if (!user) {
-                throw new ServerError("El usuario no existe", 404);
-            }
-            if (!user.email_verificado) {
-                throw new ServerError("El email no ha sido verificado", 401);
-            }
-            const validation_password = await bcrypt.compare(password, user.password)
-            if (!validation_password) {
-                throw new ServerError(" credenciales incorrectas", 401);
-            }
-
-            const profile_info = {
-                id: user._id,
-                username: user.nombre,
-                email: email,
-                created_at: user.fecha_creacion
-            }
-
-            const access_token = jwt.sign(
-                profile_info,
-                ENVIROMENT.JWT_SECRET,
-            )
-
-            return response.status(200).json({
-                message: "log in correcto",
-                ok: true,
-                status: 200,
-                data: {
-                    access_token: access_token
-                }
-            });
-
-
-        } catch (error) {
-            if (error instanceof ServerError) {
-                return response.status(error.status).json(
-                    {
-                        message: error.message,
-                        ok: false,
-                        status: error.status
-                    }
-                )
-            }
-            else {
-                console.error('Error critico:', error);
-                return response.status(500).json({
-                    message: "Error interno del servidor",
-                    ok: false,
-                    status: 500
-                });
-            }
-
+        if (!email) {
+            throw new ServerError("El mail es requerido", 400);
         }
+        if (!password) {
+            throw new ServerError("El contraseña es requerida", 400);
+        }
+
+
+        if (password.length < 6) {
+            throw new ServerError("la contraseña debe ser mayor a 6 caracteres", 400);
+        }
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+            throw new ServerError("Email inválido", 400)
+        }
+        const user = await userRepository.getByEmail(email);
+        if (!user) {
+            throw new ServerError("El usuario no existe", 404);
+        }
+        if (!user.email_verificado) {
+            throw new ServerError("El email no ha sido verificado", 401);
+        }
+        const validation_password = await bcrypt.compare(password, user.password)
+        if (!validation_password) {
+            throw new ServerError(" credenciales incorrectas", 401);
+        }
+
+        const profile_info = {
+            id: user._id,
+            username: user.nombre,
+            email: email,
+            created_at: user.fecha_creacion
+        }
+
+        const access_token = jwt.sign(
+            profile_info,
+            ENVIROMENT.JWT_SECRET,
+        )
+
+        return response.status(200).json({
+            message: "log in correcto",
+            ok: true,
+            status: 200,
+            data: {
+                access_token: access_token
+            }
+        });
+
+
+
     }
     async reset_password_request(request, response) {
-        try {
-            const { email } = request.body
-            if (!email) {
-                throw new ServerError("El mail es requerido", 400);
-            }
-            if (!/^\S+@\S+\.\S+$/.test(email)) {
-                throw new ServerError("Email inválido", 400)
-            }
-            const user_find = await userRepository.getByEmail(email)
-            if (!user_find) {
-                throw new ServerError("El usuario no existe", 404);
-            }
 
-            const token = jwt.sign(
-                {
-                    email: email
-                },
-                ENVIROMENT.JWT_SECRET,
-                {
-                    expiresIn: "15m" // el token expira en 15min
-                }
-            )
+        const { email } = request.body
+        if (!email) {
+            throw new ServerError("El mail es requerido", 400);
+        }
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+            throw new ServerError("Email inválido", 400)
+        }
+        const user_find = await userRepository.getByEmail(email)
+        if (!user_find) {
+            throw new ServerError("El usuario no existe", 404);
+        }
 
-            const resetPasswordLink = `${ENVIROMENT.URL_FRONTEND}/reset-password?reset_password_token=${token}`;
+        const token = jwt.sign(
+            {
+                email: email
+            },
+            ENVIROMENT.JWT_SECRET,
+            {
+                expiresIn: "15m" // el token expira en 15min
+            }
+        )
 
-            await mailer_transport.sendMail({
-                from: '"UTN Backend" <puebautn@gmail.com>',
-                to: "puebautn@gmail.com",
-                subject: "Restablece tu contraseña en UTN Backend",
-                html: `
+        const resetPasswordLink = `${ENVIROMENT.URL_FRONTEND}/reset-password?reset_password_token=${token}`;
+
+        await mailer_transport.sendMail({
+            from: '"UTN Backend" <puebautn@gmail.com>',
+            to: "puebautn@gmail.com",
+            subject: "Restablece tu contraseña en UTN Backend",
+            html: `
             <!DOCTYPE html>
             <html lang="es">
             <head>
@@ -320,97 +255,52 @@ class AuthController {
             </body>
             </html>
             `
-            });
-            return response.status(200).json({
-                message: "Mail de restablecimiento enviado con éxito",
-                ok: true,
-                status: 200
-            });
-        } catch (error) {
-            if (error instanceof ServerError) {
-                return response.status(error.status).json(
-                    {
-                        message: error.message,
-                        ok: false,
-                        status: error.status
-                    }
-                )
-            }
-            else {
-                console.error('Error critico:', error);
-                return response.status(500).json({
-                    message: "Error interno del servidor",
-                    ok: false,
-                    status: 500
-                });
-            }
+        });
+        return response.status(200).json({
+            message: "Mail de restablecimiento enviado con éxito",
+            ok: true,
+            status: 200
+        });
 
-        }
     }
 
     async reset_password(request, response) {
-        try {
-            const authorization_header = request.headers.authorization
-            if (!authorization_header) {
-                throw new ServerError("No se proporciono el header de autorizacion", 401)
-            }
-            const authorization_token = authorization_header.split(" ")[1]
 
-            if (!authorization_token) {
-                throw new ServerError("no hay token de autorizacion", 401)
-            }
-
-            const { password } = request.body
-            if (!password) {
-                throw new ServerError("no se envio la contraseña", 400)
-            }
-            if (password.length < 6) {
-                throw new ServerError("la contraseña debe ser mayor a 6 caracteres", 400);
-            }
-            const verification_token = jwt.verify(authorization_token, ENVIROMENT.JWT_SECRET)
-            // el verify tambien decodifica el token
-            const user_find = await userRepository.getByEmail(verification_token.email)
-
-            if (!user_find) {
-                throw new ServerError("No se encontro el usuario", 404)
-            }
-
-            const hashed_password = await bcrypt.hash(password, 12);
-
-            await userRepository.updateById(user_find.id, { password: hashed_password });
-
-            return response.status(200).json({
-                message: "Contraseña restablecida con éxito",
-                ok: true,
-                status: 200
-            });
-        } catch (error) {
-            if (error.name === 'JsonWebTokenError') {
-                return response.status(401).json({
-                    message: "Token de autorizacion invalido",
-                    ok: false,
-                    status: 401
-                })
-            }
-            if (error instanceof ServerError) {
-                return response.status(error.status).json(
-                    {
-                        message: error.message,
-                        ok: false,
-                        status: error.status
-                    }
-                )
-            }
-            else {
-                console.error('Error critico:', error);
-                return response.status(500).json({
-                    message: "Error interno del servidor",
-                    ok: false,
-                    status: 500
-                });
-            }
-
+        const authorization_header = request.headers.authorization
+        if (!authorization_header) {
+            throw new ServerError("No se proporciono el header de autorizacion", 401)
         }
+        const authorization_token = authorization_header.split(" ")[1]
+
+        if (!authorization_token) {
+            throw new ServerError("no hay token de autorizacion", 401)
+        }
+
+        const { password } = request.body
+        if (!password) {
+            throw new ServerError("no se envio la contraseña", 400)
+        }
+        if (password.length < 6) {
+            throw new ServerError("la contraseña debe ser mayor a 6 caracteres", 400);
+        }
+        const verification_token = jwt.verify(authorization_token, ENVIROMENT.JWT_SECRET)
+        // el verify tambien decodifica el token
+        const user_find = await userRepository.getByEmail(verification_token.email)
+
+        if (!user_find) {
+            throw new ServerError("No se encontro el usuario", 404)
+        }
+
+        const hashed_password = await bcrypt.hash(password, 12);
+
+        await userRepository.updateById(user_find.id, { password: hashed_password });
+
+        return response.status(200).json({
+            message: "Contraseña restablecida con éxito",
+            ok: true,
+            status: 200
+        });
+
     }
 }
 
